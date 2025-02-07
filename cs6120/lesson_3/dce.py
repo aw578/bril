@@ -55,12 +55,12 @@ def dce(instrs):
     while changed:
       changed, instrs = dce_block(instrs)
     new_blocks.append((block[0], instrs))
-  return new_blocks
+  return merge_blocks(new_blocks)
 
 if __name__ == "__main__":
   program_str = "".join(sys.stdin.readlines())
   program = json.loads(program_str)
-  program["functions"][0]["instrs"] = merge_blocks(dce(program["functions"][0]["instrs"]))
+  program["functions"][0]["instrs"] = dce(program["functions"][0]["instrs"])
   print(json.dumps(program, indent=1))
 
 # interpret: bril2json < examples/test/tdce/x.bril | brili
