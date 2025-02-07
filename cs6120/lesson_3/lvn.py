@@ -35,8 +35,10 @@ just add to table if you see an arg that's not in var2num?
 """
 import json
 import sys
-sys.path.append("/home/nya1025/bril/cs6120/lesson_2")
-from blocks import function_blocks, merge_blocks
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from lesson_2.blocks import function_blocks, merge_blocks
 
 class Table():
   def __init__(self):
