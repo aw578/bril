@@ -66,7 +66,14 @@ class Table():
     return self.row - 1
   def contains_val(self, value):
     # jank for booleans thank u guido!
-    return any(k is value and type(k) == type(value) for k in self.value_var)
+    for v in self.value_var:
+      if(value == v):
+        # compare types
+        for i in range(len(value)):
+          if(type(value[i]) != type(v[i])):
+            return False
+        return True
+    return False
   def name_from_val(self, value):
     """Get a var name using its value."""
     return self.value_var[value]
@@ -76,6 +83,8 @@ class Table():
   def row_from_val(self, value):
     """Get a row number using its value."""
     return self.val_row[value]
+
+
 
 def find_overwrites(instrs):
   overwritten = [False for _ in instrs]
@@ -119,7 +128,6 @@ def lvn(instrs):
       continue
     else:
       raise Exception(instr)
-
     if table.contains_val(value):
       # The value has been computed before; reuse it.
       var = table.name_from_val(value)
@@ -154,6 +162,7 @@ def lvn(instrs):
       # i think you need to save the old variable too?
       var2num[old_dest] = num
       var2num[instr["dest"]] = num
+
 def lvn_func(instrs):
   """Perform LVN on a list of instructions and return the updated list."""
   blocks = function_blocks(instrs)
