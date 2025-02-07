@@ -1,5 +1,4 @@
-# ARGS: -f
-
+#ARGS: true false
 @main(arg1: bool, arg2: bool) {
   t: bool = const true;
   f: bool = const false;
