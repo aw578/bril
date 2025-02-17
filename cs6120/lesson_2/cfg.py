@@ -30,7 +30,10 @@ def build_cfg(all_blocks):
     # last entry is br -> successors = br targets
     # last entry is jmp -> successor = jmp
     # last entry is nothing -> successor = next block (or exit if last block)
-    last_entry = all_blocks[i][1][-1]
+    if(len(all_blocks[i][1]) == 0):
+      last_entry = {"op": "fake command"}
+    else:
+      last_entry = all_blocks[i][1][-1]
     if(last_entry["op"] == "br" or last_entry["op"] == "jmp"):
       successors[all_blocks[i][0]] = last_entry["labels"]
     elif(last_entry["op"] == "ret"):
