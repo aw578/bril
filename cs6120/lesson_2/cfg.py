@@ -1,9 +1,12 @@
 import sys
-import blocks
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+import lesson_2.blocks as blocks
     
 def change_labels(all_blocks):
-  new_name = "label "
-  new_num = 0
+  new_name = "b"
+  new_num = 1
   all_labels = [block[0] for block in all_blocks]
   for i in range(len(all_labels)):
     if(all_labels[i] == None):
