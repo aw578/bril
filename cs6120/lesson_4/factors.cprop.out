@@ -1,0 +1,18 @@
+b1:
+  in:  ∅
+  out: fac: 2, one: 1, zer: 0
+loopcheck:
+  in:  fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+  out: fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+loopbody:
+  in:  fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+  out: fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+ifyes:
+  in:  fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+  out: fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+ifno:
+  in:  fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+  out: fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+loopend:
+  in:  fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0
+  out: fac: ?, ispos: ?, iszero: ?, mod: ?, num: ?, one: 1, quo: ?, tmp: ?, zer: 0

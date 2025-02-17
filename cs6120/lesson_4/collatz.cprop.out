@@ -1,0 +1,21 @@
+b1:
+  in:  ∅
+  out: one: 1, three: 3, two: 2
+cond:
+  in:  doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+  out: doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+loop:
+  in:  doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+  out: doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+even:
+  in:  doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+  out: doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+odd:
+  in:  doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+  out: doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+print:
+  in:  doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+  out: doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+end:
+  in:  doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?
+  out: doublehalf: ?, eq_one: ?, even: ?, half: ?, one: 1, three: 3, two: 2, x: ?

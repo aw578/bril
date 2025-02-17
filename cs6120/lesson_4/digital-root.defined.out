@@ -1,0 +1,18 @@
+b1:
+  in:  ∅
+  out: result, ten, zero
+begin:
+  in:  digit, done, input, processed, r0, result, ten, zero
+  out: digit, done, input, processed, r0, result, ten, zero
+check_result:
+  in:  digit, done, input, processed, r0, result, ten, zero
+  out: digit, done, input, processed, r0, result, ten, zero
+process_result:
+  in:  digit, done, input, processed, r0, result, ten, zero
+  out: digit, done, input, processed, r0, result, ten, zero
+check_done:
+  in:  digit, done, input, processed, r0, result, ten, zero
+  out: digit, done, input, processed, r0, result, ten, zero
+done:
+  in:  digit, done, input, processed, r0, result, ten, zero
+  out: digit, done, input, processed, r0, result, ten, zero

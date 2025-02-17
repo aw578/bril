@@ -126,5 +126,10 @@ if __name__ == "__main__":
     program = json.loads(program_str)
     instrs = program["functions"][0]["instrs"]
     all_blocks = change_labels(function_blocks(instrs))
-    # worklist(all_blocks, init_defines, merge_defines, transfer_defines, final_print_defines)
-    worklist(all_blocks, init_constants, merge_constants, transfer_constants, final_print_constants)
+    work_type = sys.argv[1]
+    if(work_type == "defined"):
+        worklist(all_blocks, init_defines, merge_defines, transfer_defines, final_print_defines)
+    elif(work_type == "cprop"):
+        worklist(all_blocks, init_constants, merge_constants, transfer_constants, final_print_constants)
+    else:
+        raise Exception("invalid type")

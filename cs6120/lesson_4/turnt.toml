@@ -1,1 +1,7 @@
-command = "bril2json < {filename} | python cs6120/lesson_4/flow.py "
+[envs.defined]
+command = "bril2json < {filename} | python3 flow.py defined"
+output."defined.out" = "-"
+
+[envs.cprop]
+command = "bril2json < {filename} | python3 flow.py cprop"
+output."cprop.out" = "-"

@@ -1,0 +1,18 @@
+b1:
+  in:  ∅
+  out: fac, one, zer
+loopcheck:
+  in:  fac, ispos, iszero, mod, num, one, quo, tmp, zer
+  out: fac, ispos, iszero, mod, num, one, quo, tmp, zer
+loopbody:
+  in:  fac, ispos, iszero, mod, num, one, quo, tmp, zer
+  out: fac, ispos, iszero, mod, num, one, quo, tmp, zer
+ifyes:
+  in:  fac, ispos, iszero, mod, num, one, quo, tmp, zer
+  out: fac, ispos, iszero, mod, num, one, quo, tmp, zer
+ifno:
+  in:  fac, ispos, iszero, mod, num, one, quo, tmp, zer
+  out: fac, ispos, iszero, mod, num, one, quo, tmp, zer
+loopend:
+  in:  fac, ispos, iszero, mod, num, one, quo, tmp, zer
+  out: fac, ispos, iszero, mod, num, one, quo, tmp, zer

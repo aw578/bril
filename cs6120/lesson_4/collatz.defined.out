@@ -1,0 +1,21 @@
+b1:
+  in:  ∅
+  out: one, three, two
+cond:
+  in:  doublehalf, eq_one, even, half, one, three, two, x
+  out: doublehalf, eq_one, even, half, one, three, two, x
+loop:
+  in:  doublehalf, eq_one, even, half, one, three, two, x
+  out: doublehalf, eq_one, even, half, one, three, two, x
+even:
+  in:  doublehalf, eq_one, even, half, one, three, two, x
+  out: doublehalf, eq_one, even, half, one, three, two, x
+odd:
+  in:  doublehalf, eq_one, even, half, one, three, two, x
+  out: doublehalf, eq_one, even, half, one, three, two, x
+print:
+  in:  doublehalf, eq_one, even, half, one, three, two, x
+  out: doublehalf, eq_one, even, half, one, three, two, x
+end:
+  in:  doublehalf, eq_one, even, half, one, three, two, x
+  out: doublehalf, eq_one, even, half, one, three, two, x

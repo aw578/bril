@@ -1,0 +1,18 @@
+b1:
+  in:  ∅
+  out: result: 0, ten: 10, zero: 0
+begin:
+  in:  digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+  out: digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+check_result:
+  in:  digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+  out: digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+process_result:
+  in:  digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+  out: digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+check_done:
+  in:  digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+  out: digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+done:
+  in:  digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
+  out: digit: ?, done: ?, input: ?, processed: ?, r0: ?, result: ?, ten: 10, zero: 0
