@@ -50,7 +50,7 @@ def postorder(cfg):
   return order
 
 def fast_traverse(cfg):
-  """build a dominance tree using reverse postorder?"""
+  """build a dominance tree using reverse postorder? for each node, nodes that dominate it"""
   preds = invert(cfg)
   dominates = {}
   start_set = set(cfg.keys())
@@ -76,16 +76,37 @@ def fast_traverse(cfg):
         dominates[node] = new_dominates
   return dominates
 
+def frontier(cfg):
+  dominates = fast_traverse(cfg)
+  preds = invert(cfg)
+  dom_frontier = {}
+  for b in cfg:
+    dom_frontier[b] = []
+  # a doesn't SD b, but a dominates a pred of b
+  for b in cfg:
+    # dominates of preds of b
+    pred_doms = set()
+    for pred in preds[b]:
+      pred_doms = dominates[pred].union(pred_doms)
+    
+    # check they don't SD b
+    for a in pred_doms:
+      if not (a in dominates[b] or a == b):
+        dom_frontier[b].append(a)
+  return dom_frontier
+
 def compare(dom1, dom2):
   assert(len(dom1) == len(dom2) and key in dom2 for key in dom1)
   for key in dom1:
     assert(dom1[key] == dom2[key])
+
 if __name__ == "__main__":
   program_str = "".join(sys.stdin.readlines())
   program = json.loads(program_str)
-  instrs = program["functions"][0]["instrs"]
+  instrs = program["functions"][-1]["instrs"]
   cfg = build_cfg(change_labels(function_blocks(instrs)))
   fast = fast_traverse(cfg)
-  print(fast)
   slow = slow_traverse(cfg)
   compare(fast, slow)
+  print(fast)
+  print(frontier(cfg))
