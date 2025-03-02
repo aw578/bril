@@ -7,7 +7,7 @@ from lesson_2.blocks import function_blocks
 from lesson_2.cfg import build_cfg, change_labels
 
 def slow_traverse(cfg):
-  """build a dominance tree naively by checking all paths"""
+  """build dominators naively by checking all paths"""
   dominates = {}
   start_set = set(cfg.keys())
   for node in cfg:
@@ -50,7 +50,7 @@ def postorder(cfg):
   return order
 
 def fast_traverse(cfg):
-  """build a dominance tree using reverse postorder? for each node, nodes that dominate it"""
+  """build dominators using reverse postorder? for each node, nodes that dominate it"""
   preds = invert(cfg)
   dominates = {}
   start_set = set(cfg.keys())
@@ -76,24 +76,45 @@ def fast_traverse(cfg):
         dominates[node] = new_dominates
   return dominates
 
+def build_tree(cfg, dominates):
+  """Returns the root of a dominance tree {name, children}"""
+  nodes = {}
+  for node in cfg:
+    nodes[node] = {"name": node, "children": []}
+  
+  # if dominates + is parent
+  for node in dominates:
+    for parent in dominates[node]:
+      if parent != node and node not in nodes[parent]["children"]  and node in cfg[parent]:
+        nodes[parent]["children"].append(nodes[node])
+  return nodes["entry"]
+
 def frontier(cfg):
   dominates = fast_traverse(cfg)
-  preds = invert(cfg)
-  dom_frontier = {}
-  for b in cfg:
-    dom_frontier[b] = []
-  # a doesn't SD b, but a dominates a pred of b
-  for b in cfg:
-    # dominates of preds of b
-    pred_doms = set()
-    for pred in preds[b]:
-      pred_doms = dominates[pred].union(pred_doms)
-    
-    # check they don't SD b
-    for a in pred_doms:
-      if not (a in dominates[b] or a == b):
-        dom_frontier[b].append(a)
-  return dom_frontier
+  dominated_by = invert(dominates)
+  frontiers = {}
+  # A doesn't strictly dominate B, but A dominates a predecessor of B
+  # steps: x = everything A dominates, y = every child of a node in x
+  # remove A from x (x is now everything A strictly dominates), return y - x 
+  for node in cfg:
+    x = set()
+    visited = set()
+    def downstream(nd):
+      visited.add(nd)
+      x.add(nd)
+      for child in dominated_by[nd]:
+        if(child not in visited):
+          downstream(child)
+    # downstream of node, not root
+    downstream(node)
+    y = set()
+    for nd in x:
+      for child in cfg[nd]:
+        y.add(child)
+
+    x.remove(node)  
+    frontiers[node] = y.difference(x)
+  return frontiers
 
 def compare(dom1, dom2):
   assert(len(dom1) == len(dom2) and key in dom2 for key in dom1)
@@ -104,9 +125,9 @@ if __name__ == "__main__":
   program_str = "".join(sys.stdin.readlines())
   program = json.loads(program_str)
   instrs = program["functions"][-1]["instrs"]
+  print([program["functions"][x]["name"] for x in range(len(program["functions"]))])
   cfg = build_cfg(change_labels(function_blocks(instrs)))
   fast = fast_traverse(cfg)
   slow = slow_traverse(cfg)
   compare(fast, slow)
-  print(fast)
   print(frontier(cfg))
