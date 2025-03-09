@@ -1,13 +1,24 @@
 @main {
 .a:
   x: int = const 4;
+  set z x;
   jmp .c;
 .b:
   y: int = const 2;
+  set z y;
   jmp .c;
 .c:
-  z1: int = phi .a x .b y;
-  z2: float = phi .a x .b y;
-  z3: int = phi .a x y;
-  z3: int = phi .a x .b;
+  z: int = get;
+  z: float = get;
+  z: int = get x;
+}
+
+@more {
+  b: int = const 1;
+  c: int = const 2;
+  d: float = const 3.14;
+
+  set;
+  a: int = set b c;
+  set b d;
 }

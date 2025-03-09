@@ -1,0 +1,6 @@
+@main {
+  y: int = const 5;
+  set x y;
+  x: int = get;
+  x: int = get;
+}

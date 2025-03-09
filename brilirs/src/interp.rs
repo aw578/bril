@@ -1,7 +1,7 @@
 use crate::basic_block::{BBFunction, BBProgram, BasicBlock};
 use crate::error::{InterpError, PositionalInterpError};
-use bril2json::escape_control_chars;
 use bril_rs::Instruction;
+use bril2json::escape_control_chars;
 
 use fxhash::FxHashMap;
 
@@ -11,6 +11,7 @@ use mimalloc::MiMalloc;
 static GLOBAL: MiMalloc = MiMalloc;
 
 use std::cmp::max;
+use std::collections::HashMap;
 use std::fmt;
 
 // The Environment is the data structure used to represent the stack of the program.
@@ -198,6 +199,10 @@ impl fmt::Display for Value {
       Self::Bool(b) => write!(f, "{b}"),
       Self::Float(v) if v.is_infinite() && v.is_sign_positive() => write!(f, "Infinity"),
       Self::Float(v) if v.is_infinite() && v.is_sign_negative() => write!(f, "-Infinity"),
+      Self::Float(v) if v != &0.0 && v.abs().log10() >= 10.0 => {
+        f.write_str(format!("{v:.17e}").replace('e', "e+").as_str())
+      }
+      Self::Float(v) if v != &0.0 && v.abs().log10() <= -10.0 => write!(f, "{v:.17e}"),
       Self::Float(v) => write!(f, "{v:.17}"),
       Self::Char(c) => write!(f, "{c}"),
       Self::Pointer(p) => write!(f, "{p:?}"),
@@ -213,6 +218,12 @@ fn optimized_val_output<T: std::io::Write>(out: &mut T, val: &Value) -> Result<(
     Value::Float(f) if f.is_infinite() && f.is_sign_positive() => out.write_all(b"Infinity"),
     Value::Float(f) if f.is_infinite() && f.is_sign_negative() => out.write_all(b"-Infinity"),
     Value::Float(f) if f.is_nan() => out.write_all(b"NaN"),
+    Value::Float(f) if f != &0.0 && f.abs().log10() >= 10.0 => {
+      out.write_all(format!("{f:.17e}").replace('e', "e+").as_bytes())
+    }
+    Value::Float(f) if f != &0.0 && f.abs().log10() <= -10.0 => {
+      out.write_all(format!("{f:.17e}").as_bytes())
+    }
     Value::Float(f) => out.write_all(format!("{f:.17}").as_bytes()),
     Value::Char(c) => {
       let buf = &mut [0_u8; 2];
@@ -319,13 +330,13 @@ fn execute_value_op<T: std::io::Write>(
   op: bril_rs::ValueOps,
   dest: usize,
   args: &[usize],
-  labels: &[String],
   funcs: &[usize],
-  last_label: Option<&String>,
+  shadow_env: &mut HashMap<usize, Value>,
 ) -> Result<(), InterpError> {
   use bril_rs::ValueOps::{
-    Add, Alloc, And, Call, Ceq, Cge, Cgt, Char2int, Cle, Clt, Div, Eq, Fadd, Fdiv, Feq, Fge, Fgt,
-    Fle, Flt, Fmul, Fsub, Ge, Gt, Id, Int2char, Le, Load, Lt, Mul, Not, Or, Phi, PtrAdd, Sub,
+    Add, Alloc, And, Bits2Float, Call, Ceq, Cge, Cgt, Char2int, Cle, Clt, Div, Eq, Fadd, Fdiv, Feq,
+    Fge, Fgt, Fle, Float2Bits, Flt, Fmul, Fsub, Ge, Get, Gt, Id, Int2char, Le, Load, Lt, Mul, Not,
+    Or, PtrAdd, Sub, Undef,
   };
   match op {
     Add => {
@@ -489,17 +500,13 @@ fn execute_value_op<T: std::io::Write>(
 
       state.env.set(dest, result);
     }
-    Phi => match last_label {
-      None => return Err(InterpError::NoLastLabel),
-      Some(last_label) => {
-        let arg = labels
-          .iter()
-          .position(|l| l == last_label)
-          .ok_or_else(|| InterpError::PhiMissingLabel(last_label.to_string()))
-          .map(|i| get_arg::<Value>(&state.env, i, args))?;
-        state.env.set(dest, arg);
-      }
+    Get => match shadow_env.remove(&dest) {
+      Some(v) => state.env.set(dest, v),
+      None => return Err(InterpError::GetWithoutSet),
     },
+    Undef => {
+      state.env.set(dest, Value::Uninitialized);
+    }
     Alloc => {
       let arg0 = get_arg::<i64>(&state.env, 0, args);
       let res = state.heap.alloc(arg0)?;
@@ -516,6 +523,20 @@ fn execute_value_op<T: std::io::Write>(
       let res = Value::Pointer(arg0.add(arg1));
       state.env.set(dest, res);
     }
+    Float2Bits => {
+      let float = get_arg::<f64>(&state.env, 0, args);
+      // https://users.rust-lang.org/t/i64-u64-mapping-revisited/109315
+      // the to and from native endian stuff is a nop
+      // if link dies try web archive
+      let int = i64::from_ne_bytes(float.to_ne_bytes());
+      state.env.set(dest, Value::Int(int));
+    }
+    Bits2Float => {
+      let int = get_arg::<i64>(&state.env, 0, args);
+      // see comment for Float2Bits
+      let float = f64::from_ne_bytes(int.to_ne_bytes());
+      state.env.set(dest, Value::Float(float));
+    }
   }
   Ok(())
 }
@@ -529,9 +550,10 @@ fn execute_effect_op<T: std::io::Write>(
   // There are two output variables where values are stored to effect the loop execution.
   next_block_idx: &mut Option<usize>,
   result: &mut Option<Value>,
+  shadow_env: &mut HashMap<usize, Value>,
 ) -> Result<(), InterpError> {
   use bril_rs::EffectOps::{
-    Branch, Call, Commit, Free, Guard, Jump, Nop, Print, Return, Speculate, Store,
+    Branch, Call, Commit, Free, Guard, Jump, Nop, Print, Return, Set, Speculate, Store,
   };
   match op {
     Jump => {
@@ -584,6 +606,10 @@ fn execute_effect_op<T: std::io::Write>(
       let arg0 = get_arg::<&Pointer>(&state.env, 0, args);
       state.heap.free(arg0)?;
     }
+    Set => {
+      let arg = get_arg::<Value>(&state.env, 1, args);
+      shadow_env.insert(args[0], arg);
+    }
     Speculate | Commit | Guard => unimplemented!(),
   }
   Ok(())
@@ -593,8 +619,7 @@ fn execute<'a, T: std::io::Write>(
   state: &mut State<'a, T>,
   func: &'a BBFunction,
 ) -> Result<Option<Value>, PositionalInterpError> {
-  let mut last_label;
-  let mut current_label = None;
+  let mut shadow_env = HashMap::new();
   let mut curr_block_idx = 0;
   // A possible return value
   let mut result = None;
@@ -605,8 +630,6 @@ fn execute<'a, T: std::io::Write>(
     let curr_numified_instrs = &curr_block.numified_instrs;
     // WARNING!!! We can add the # of instructions at once because you can only jump to a new block at the end. This may need to be changed if speculation is implemented
     state.instruction_count += curr_instrs.len();
-    last_label = current_label;
-    current_label = curr_block.label.as_ref();
 
     // A place to store the next block that will be jumped to if specified by an instruction
     let mut next_block_idx = None;
@@ -646,7 +669,7 @@ fn execute<'a, T: std::io::Write>(
           dest: _,
           op_type: _,
           args: _,
-          labels,
+          labels: _,
           funcs: _,
           pos,
         } => {
@@ -655,9 +678,8 @@ fn execute<'a, T: std::io::Write>(
             *op,
             numified_code.dest.unwrap(),
             &numified_code.args,
-            labels,
             &numified_code.funcs,
-            last_label,
+            &mut shadow_env,
           )
           .map_err(|e| e.add_pos(pos.clone()))?;
         }
@@ -676,6 +698,7 @@ fn execute<'a, T: std::io::Write>(
             curr_block,
             &mut next_block_idx,
             &mut result,
+            &mut shadow_env,
           )
           .map_err(|e| e.add_pos(pos.clone()))?;
         }
@@ -715,7 +738,7 @@ fn parse_args(
               return Err(InterpError::BadFuncArgType(
                 bril_rs::Type::Bool,
                 (*inputs.get(index).unwrap()).to_string(),
-              ))
+              ));
             }
             Ok(b) => env.set(*arg_as_num, Value::Bool(b)),
           };
@@ -727,7 +750,7 @@ fn parse_args(
               return Err(InterpError::BadFuncArgType(
                 bril_rs::Type::Int,
                 (*inputs.get(index).unwrap()).to_string(),
-              ))
+              ));
             }
             Ok(i) => env.set(*arg_as_num, Value::Int(i)),
           };
@@ -739,13 +762,12 @@ fn parse_args(
               return Err(InterpError::BadFuncArgType(
                 bril_rs::Type::Float,
                 (*inputs.get(index).unwrap()).to_string(),
-              ))
+              ));
             }
             Ok(f) => env.set(*arg_as_num, Value::Float(f)),
           };
           Ok(())
         }
-        bril_rs::Type::Pointer(..) => unreachable!(),
         bril_rs::Type::Char => escape_control_chars(inputs.get(index).unwrap().as_ref())
           .map_or_else(
             || Err(InterpError::NotOneChar),
@@ -754,6 +776,7 @@ fn parse_args(
               Ok(())
             },
           ),
+        bril_rs::Type::Pointer(..) | bril_rs::Type::Any => unreachable!(),
       })?;
     Ok(env)
   }

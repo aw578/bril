@@ -367,6 +367,9 @@ pub enum EffectOps {
     /// <https://capra.cs.cornell.edu/bril/lang/spec.html#operations>
     #[cfg(feature = "speculate")]
     Guard,
+    /// <https://capra.cs.cornell.edu/bril/lang/ssa2.html#operations>
+    #[cfg(feature = "ssa")]
+    Set,
 }
 
 impl Display for EffectOps {
@@ -388,6 +391,8 @@ impl Display for EffectOps {
             Self::Commit => write!(f, "commit"),
             #[cfg(feature = "speculate")]
             Self::Guard => write!(f, "guard"),
+            #[cfg(feature = "ssa")]
+            Self::Set => write!(f, "set"),
         }
     }
 }
@@ -413,6 +418,8 @@ impl FromStr for EffectOps {
             "commit" => Self::Commit,
             #[cfg(feature = "speculate")]
             "guard" => Self::Guard,
+            #[cfg(feature = "ssa")]
+            "set" => Self::Set,
             e => Err(ConversionError::InvalidEffectOps(e.to_string()))?,
         })
     }
@@ -450,9 +457,12 @@ pub enum ValueOps {
     Call,
     /// <https://capra.cs.cornell.edu/bril/lang/core.html#miscellaneous>
     Id,
-    /// <https://capra.cs.cornell.edu/bril/lang/ssa.html#operations>
+    /// <https://capra.cs.cornell.edu/bril/lang/ssa2.html#operations>
     #[cfg(feature = "ssa")]
-    Phi,
+    Get,
+    /// <https://capra.cs.cornell.edu/bril/lang/ssa2.html#operations>
+    #[cfg(feature = "ssa")]
+    Undef,
     /// <https://capra.cs.cornell.edu/bril/lang/float.html#operations>
     #[cfg(feature = "float")]
     Fadd,
@@ -510,6 +520,12 @@ pub enum ValueOps {
     /// <https://capra.cs.cornell.edu/bril/lang/memory.html#operations>
     #[cfg(feature = "memory")]
     PtrAdd,
+    /// <https://capra.cs.cornell.edu/bril/lang/bitcast.html#operations>
+    #[cfg(feature = "bitcast")]
+    Float2Bits,
+    /// <https://capra.cs.cornell.edu/bril/lang/bitcast.html#operations>
+    #[cfg(feature = "bitcast")]
+    Bits2Float,
 }
 
 impl Display for ValueOps {
@@ -530,7 +546,9 @@ impl Display for ValueOps {
             Self::Call => write!(f, "call"),
             Self::Id => write!(f, "id"),
             #[cfg(feature = "ssa")]
-            Self::Phi => write!(f, "phi"),
+            Self::Get => write!(f, "get"),
+            #[cfg(feature = "ssa")]
+            Self::Undef => write!(f, "undef"),
             #[cfg(feature = "float")]
             Self::Fadd => write!(f, "fadd"),
             #[cfg(feature = "float")]
@@ -569,6 +587,10 @@ impl Display for ValueOps {
             Self::Load => write!(f, "load"),
             #[cfg(feature = "memory")]
             Self::PtrAdd => write!(f, "ptradd"),
+            #[cfg(feature = "bitcast")]
+            Self::Float2Bits => write!(f, "float2bits"),
+            #[cfg(feature = "bitcast")]
+            Self::Bits2Float => write!(f, "bits2float"),
         }
     }
 }
@@ -593,7 +615,9 @@ impl FromStr for ValueOps {
             "id" => Self::Id,
             "sub" => Self::Sub,
             #[cfg(feature = "ssa")]
-            "phi" => Self::Phi,
+            "get" => Self::Get,
+            #[cfg(feature = "ssa")]
+            "undef" => Self::Undef,
             #[cfg(feature = "float")]
             "fadd" => Self::Fadd,
             #[cfg(feature = "float")]
@@ -632,6 +656,10 @@ impl FromStr for ValueOps {
             "load" => Self::Load,
             #[cfg(feature = "memory")]
             "ptradd" => Self::PtrAdd,
+            #[cfg(feature = "bitcast")]
+            "bits2float" => Self::Bits2Float,
+            #[cfg(feature = "bitcast")]
+            "float2bits" => Self::Float2Bits,
             v => Err(ConversionError::InvalidValueOps(v.to_string()))?,
         })
     }
@@ -655,6 +683,10 @@ pub enum Type {
     #[cfg(feature = "memory")]
     #[serde(rename = "ptr")]
     Pointer(Box<Self>),
+    /// <https://capra.cs.cornell.edu/bril/lang/dynamic.html#types>]
+    #[cfg(feature = "dynamic")]
+    #[serde(rename = "any")]
+    Any,
 }
 
 impl Display for Type {
@@ -668,6 +700,8 @@ impl Display for Type {
             Self::Char => write!(f, "char"),
             #[cfg(feature = "memory")]
             Self::Pointer(tpe) => write!(f, "ptr<{tpe}>"),
+            #[cfg(feature = "dynamic")]
+            Self::Any => write!(f, "any"),
         }
     }
 }
@@ -683,6 +717,8 @@ impl FromStr for Type {
             "float" => Ok(Self::Float),
             #[cfg(feature = "char")]
             "char" => Ok(Self::Char),
+            #[cfg(feature = "dynamic")]
+            "any" => Ok(Self::Any),
             _ => Err(ConversionError::InvalidPrimitive(s.to_string())),
         }
     }

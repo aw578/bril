@@ -31,7 +31,7 @@ const fn check_num_labels(expected: usize, labels: &[String]) -> Result<(), Inte
 }
 
 fn check_asmt_type(expected: &bril_rs::Type, actual: &bril_rs::Type) -> Result<(), InterpError> {
-  if expected == actual {
+  if expected == actual || expected == &bril_rs::Type::Any || actual == &bril_rs::Type::Any {
     Ok(())
   } else {
     Err(InterpError::BadAsmtType(expected.clone(), actual.clone()))
@@ -43,11 +43,10 @@ fn update_env<'a>(
   dest: &'a str,
   typ: &'a Type,
 ) -> Result<(), InterpError> {
-  #[expect(
-    clippy::option_if_let_else,
-    reason = "https://github.com/rust-lang/rust-clippy/issues/8346"
-  )]
-  if let Some(current_typ) = env.get(dest) {
+  if typ == &Type::Any {
+    env.insert(dest, typ);
+    Ok(())
+  } else if let Some(current_typ) = env.get(dest) {
     check_asmt_type(current_typ, typ)
   } else {
     env.insert(dest, typ);
@@ -55,11 +54,11 @@ fn update_env<'a>(
   }
 }
 
-fn get_type<'a>(
-  env: &'a FxHashMap<&'a str, &'a Type>,
+fn get_type<'a, 'b>(
+  env: &'a FxHashMap<&'a str, &'b Type>,
   index: usize,
   args: &[String],
-) -> Result<&'a &'a Type, InterpError> {
+) -> Result<&'a &'b Type, InterpError> {
   if index >= args.len() {
     return Err(InterpError::BadNumArgs(index, args.len()));
   }
@@ -262,6 +261,38 @@ fn type_check_instruction<'a>(
       update_env(env, dest, op_type)
     }
     Instruction::Value {
+      op: ValueOps::Bits2Float,
+      args,
+      dest,
+      funcs,
+      labels,
+      pos: _,
+      op_type,
+    } => {
+      check_num_args(1, args)?;
+      check_num_funcs(0, funcs)?;
+      check_num_labels(0, labels)?;
+      check_asmt_type(get_type(env, 0, args)?, &Type::Int)?;
+      check_asmt_type(op_type, &Type::Float)?;
+      update_env(env, dest, op_type)
+    }
+    Instruction::Value {
+      op: ValueOps::Float2Bits,
+      args,
+      dest,
+      funcs,
+      labels,
+      pos: _,
+      op_type,
+    } => {
+      check_num_args(1, args)?;
+      check_num_funcs(0, funcs)?;
+      check_num_labels(0, labels)?;
+      check_asmt_type(get_type(env, 0, args)?, &Type::Float)?;
+      check_asmt_type(op_type, &Type::Int)?;
+      update_env(env, dest, op_type)
+    }
+    Instruction::Value {
       op: ValueOps::Call,
       dest,
       op_type,
@@ -296,7 +327,7 @@ fn type_check_instruction<'a>(
       update_env(env, dest, op_type)
     }
     Instruction::Value {
-      op: ValueOps::Phi,
+      op: ValueOps::Get,
       dest,
       op_type,
       args,
@@ -304,13 +335,24 @@ fn type_check_instruction<'a>(
       labels,
       pos: _,
     } => {
-      if args.len() != labels.len() {
-        return Err(InterpError::UnequalPhiNode);
-      }
+      check_num_args(0, args)?;
       check_num_funcs(0, funcs)?;
-      // Phi nodes are a little weird with their args and there has been some discussion on an _undefined var name in #108
-      // Instead, we are going to assign the type we expect to all of the args and this will trigger an error if any of these args ends up being a different type.
-      args.iter().try_for_each(|a| update_env(env, a, op_type))?;
+      check_num_labels(0, labels)?;
+
+      update_env(env, dest, op_type)
+    }
+    Instruction::Value {
+      op: ValueOps::Undef,
+      dest,
+      op_type,
+      args,
+      funcs,
+      labels,
+      pos: _,
+    } => {
+      check_num_args(0, args)?;
+      check_num_funcs(0, funcs)?;
+      check_num_labels(0, labels)?;
 
       update_env(env, dest, op_type)
     }
@@ -496,6 +538,19 @@ fn type_check_instruction<'a>(
       check_num_labels(0, labels)?;
       get_ptr_type(get_type(env, 0, args)?)?;
       Ok(())
+    }
+    Instruction::Effect {
+      op: EffectOps::Set,
+      args,
+      funcs,
+      labels,
+      pos: _,
+    } => {
+      check_num_args(2, args)?;
+      check_num_funcs(0, funcs)?;
+      check_num_labels(0, labels)?;
+      let ty1 = get_type(env, 1, args)?;
+      update_env(env, &args[0], ty1)
     }
     Instruction::Effect {
       op: EffectOps::Speculate | EffectOps::Guard | EffectOps::Commit,
