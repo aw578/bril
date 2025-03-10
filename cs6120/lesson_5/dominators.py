@@ -82,11 +82,21 @@ def build_tree(cfg, dominates):
   for node in cfg:
     nodes[node] = {"name": node, "children": []}
   
-  # if dominates + is parent
+  # Find the immediate dominator for each node
+  idom = {}
   for node in dominates:
-    for parent in dominates[node]:
-      if parent != node and node not in nodes[parent]["children"]  and node in cfg[parent]:
-        nodes[parent]["children"].append(nodes[node])
+    idom[node] = None
+    for dom in dominates[node]:
+      # idom[node] in dominates[dom] means dom below idom?
+      if dom != node and (idom[node] is None or idom[node] in dominates[dom]):
+        idom[node] = dom
+
+  # Build the tree using the immediate dominators
+  for node in idom:
+    parent = idom[node]
+    if parent:
+      nodes[parent]["children"].append(nodes[node])
+  
   return nodes["entry"]
 
 def frontier(cfg):

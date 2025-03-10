@@ -22,7 +22,6 @@ for f in benchmarks/core/*.bril; do
   
   if [ "$is_ssa" != "yes" ]; then
     echo "FAIL (SSA) $is_ssa"
-    continue
   fi
   
   # Run the SSA form and save the output

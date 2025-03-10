@@ -83,15 +83,25 @@ def out_of_ssa(blocks):
         instr["args"] = [instr["args"][1]]
 
 def fancy_ssa(blocks, args):
-  # TODO: special handling for arguments? pretend they're set in the original block
   # setup
   cfg = build_cfg(blocks)
   df = frontier(cfg)
   dom_tree = build_tree(cfg, fast_traverse(cfg))
+
+  # throw out empty entry block
+  dom_tree = dom_tree["children"][0]
   label_to_block = {label: block for (label, block) in blocks}
+
+  # pass 0? insert dummy init functions for arguments (fix phi insertions in pass 1, then edit arg_inits back in pass 4)
+  first_block = label_to_block[dom_tree["name"]]
+  arg_inits = []
+  for arg in args:
+    arg_init = {"op": "id", "dest": arg, "args": [arg], "original_arg": [arg]}
+    arg_inits.append(arg_init)
+    first_block.insert(0, arg_init)
+
   # save all written vars, write locations
   all_vars = set()
-  var_types = {}
   var_defs = {}
   for (label, block) in blocks:
     for instr in block:
@@ -99,12 +109,9 @@ def fancy_ssa(blocks, args):
         dest = instr["dest"]
         if(dest not in var_defs):
           var_defs[dest] = []
-        if("type" in instr):
-          var_types[dest] = instr["type"]
-        else:
-          raise Exception("huh?")
         var_defs[dest].append(label)
         all_vars.add(dest)
+
   
   # pass 1: insert phi functions, save with original name for pass 2
   # (block, var) -> set of (block, varname) pairs
@@ -120,12 +127,12 @@ def fancy_ssa(blocks, args):
         if(label not in defs):
           defs.append(label)
         if((label, v) not in pending_phis):
-          phi_instr = {"op": "phi", "dest": v, "args": [], "type": var_types[v]}
+          phi_instr = {"op": "phi", "dest": v, "args": []}
           pending_phis[(label, v)] = phi_instr
           label_to_block[label].insert(0, phi_instr)
       i += 1
   
-  # pass 2: rename funcions
+  # pass 2: rename functions
   stack = {v: [v] for v in all_vars}
   stack_num = {v: 0 for v in all_vars}
   def rename(tree_node):
@@ -165,8 +172,7 @@ def fancy_ssa(blocks, args):
       for _ in range(names_added[name]):
         stack[name].pop()
     return
-  first_node = dom_tree["children"][0]
-  rename(first_node)
+  rename(dom_tree)
 
   # pass 3: add set and get nodes 
   # turn phi nodes to sets
@@ -193,14 +199,17 @@ def fancy_ssa(blocks, args):
       for instr in block_sets[label]:
         block.insert(last_entry, instr)
   
-  # pass 4: add dummy set undef nodes to beginning, sets for args
-  first_block = label_to_block[first_node["name"]]
+  # pass 4: add dummy set undef nodes to beginning, fix arg inits
+  for instr in arg_inits:
+    instr["args"] = instr["original_arg"]
+    del instr["original_arg"]
   for v in all_vars:
     if(v in args): 
-      first_block.insert(0, {"op": "set", "args": [f"{v}.0", v]})
+      pass
     else:
-      first_block.insert(0, {"op": "set", "args": [f"{v}.0", f"{v}.init"]})
-      first_block.insert(0, {"op": "undef", "dest": f"{v}.init", "args": [], "type": var_types[v]})
+      for i in range(stack_num[v]):
+        first_block.insert(0, {"op": "set", "args": [f"{v}.{i}", "dummy_undef"]})
+  first_block.insert(0, {"op": "undef", "dest": "dummy_undef", "args": []})
     
 if __name__ == "__main__":
   program_str = "".join(sys.stdin.readlines())
