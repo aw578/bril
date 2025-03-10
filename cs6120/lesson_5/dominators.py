@@ -90,6 +90,7 @@ def build_tree(cfg, dominates):
   return nodes["entry"]
 
 def frontier(cfg):
+  """Return a dict containing the dominance frontier of every node."""
   dominates = fast_traverse(cfg)
   dominated_by = invert(dominates)
   frontiers = {}
