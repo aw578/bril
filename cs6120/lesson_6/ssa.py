@@ -128,7 +128,11 @@ def fancy_ssa(blocks, args):
         if((label, v) not in pending_phis):
           phi_instr = {"op": "phi", "dest": v, "args": []}
           pending_phis[(label, v)] = phi_instr
-          label_to_block[label].insert(0, phi_instr)
+          # edge case: first block needs to respect arg_inits
+          if(label == dom_tree["name"]):
+            label_to_block[label].insert(len(args), phi_instr)
+          else:
+            label_to_block[label].insert(0, phi_instr)
       i += 1
   # pass 2: rename functions
   stack = {v: [v] for v in all_vars}
@@ -196,16 +200,19 @@ def fancy_ssa(blocks, args):
         block.insert(last_entry, instr)
   
   # pass 4: add dummy set undef nodes to beginning, fix arg inits
+  for v in all_vars:
+    if(v in args): 
+      # use v.0 as a dummy variable for within-block reads
+      for i in range(stack_num[v]):
+        first_block.insert(len(args), {"op": "set", "args": [f"{v}.{i}", f"{v}.0"]})
+    else:
+      # insert sets after arg inits
+      for i in range(stack_num[v]):
+        first_block.insert(len(args), {"op": "set", "args": [f"{v}.{i}", "dummy_undef"]})
+  first_block.insert(0, {"op": "undef", "dest": "dummy_undef", "args": []})
   for instr in arg_inits:
     instr["args"] = instr["original_arg"]
     del instr["original_arg"]
-  for v in all_vars:
-    if(v in args): 
-      pass
-    else:
-      for i in range(stack_num[v]):
-        first_block.insert(0, {"op": "set", "args": [f"{v}.{i}", "dummy_undef"]})
-  first_block.insert(0, {"op": "undef", "dest": "dummy_undef", "args": []})
     
 if __name__ == "__main__":
   program_str = "".join(sys.stdin.readlines())
@@ -217,7 +224,7 @@ if __name__ == "__main__":
       args = [arg["name"] for arg in program["functions"][i]["args"]]
     else:
       args = []
-    # naive_ssa(blocks, args)
     fancy_ssa(blocks, args)
+    out_of_ssa(blocks)
     program["functions"][i]["instrs"] = merge_blocks(blocks)
   print(json.dumps(program))
