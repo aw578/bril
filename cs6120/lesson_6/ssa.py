@@ -87,7 +87,6 @@ def fancy_ssa(blocks, args):
   cfg = build_cfg(blocks)
   df = frontier(cfg)
   dom_tree = build_tree(cfg, fast_traverse(cfg))
-
   # throw out empty entry block
   dom_tree = dom_tree["children"][0]
   label_to_block = {label: block for (label, block) in blocks}
@@ -131,7 +130,6 @@ def fancy_ssa(blocks, args):
           pending_phis[(label, v)] = phi_instr
           label_to_block[label].insert(0, phi_instr)
       i += 1
-  
   # pass 2: rename functions
   stack = {v: [v] for v in all_vars}
   stack_num = {v: 0 for v in all_vars}
@@ -190,10 +188,8 @@ def fancy_ssa(blocks, args):
   # add queued set nodes
   for (label, block) in blocks:
     # edge case: empty blocks
-    if(len(block) == 0):
-      continue
     last_entry = len(block)
-    if(block[last_entry - 1]["op"] in ["br", "jmp", "ret"]):
+    if(last_entry > 0 and block[last_entry - 1]["op"] in ["br", "jmp", "ret"]):
       last_entry -= 1
     if(label in block_sets):
       for instr in block_sets[label]:
