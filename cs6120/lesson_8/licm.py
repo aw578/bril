@@ -8,7 +8,7 @@ from lesson_2.cfg import build_cfg, change_labels
 from lesson_5.dominators import fast_traverse, invert  
 from lesson_4.flow import reaching_defs
 
-side_effects = ["div", "jmp", "br", "call", "ret", "print"]
+has_side_effects = ["div", "jmp", "br", "call", "ret", "print"]
 
 def find_loops(cfg):
   """find all natural loops in a cfg, head block -> blocks in body"""
@@ -33,6 +33,18 @@ def find_loops(cfg):
           stack.append(pred)
     loops[h] = loops[h].union(body)
   return loops
+
+def find_backedges(cfg):
+  """find all backedges in a cfg"""
+  backedges = {}
+  dominates = fast_traverse(cfg)
+  for n in cfg:
+    for h in cfg[n]:
+      if(h in dominates[n]):
+        if(h not in backedges):
+          backedges[h] = []
+        backedges[h].append(n)
+  return backedges
 
 def licm(args, blocks):
   # label -> instr map
@@ -60,8 +72,14 @@ def licm(args, blocks):
             final_instr["labels"][label_idx] = new_label
         pass
     new_blocks.append((label, block))
+  # rebuild blocks
+  blocks = new_blocks
+  cfg = build_cfg(blocks)
+  inv_cfg = invert(cfg)
 
-  var_defs = reaching_defs(args, new_blocks)
+  dominates = fast_traverse(cfg)
+  var_defs = reaching_defs(args, blocks)
+  backedges = find_backedges(cfg)
   for header in loops:
     # mark all invariant instrs
     changed = True
@@ -69,6 +87,7 @@ def licm(args, blocks):
       changed = False
       for block in loops[header]:
         for instr in block_map[block]:
+          invariant = True
           if("args" in instr):
             for arg in instr["args"]:
               # var_defs[arg] = [("entry", {})]
@@ -78,26 +97,64 @@ def licm(args, blocks):
                 has_li_def = True
               has_inside_def = False
               for (label, _) in arg_defs:
-                if(label in loops):
+                if(label in loops[header]):
                   has_inside_def = True
                   break
               # all reaching defs of x are not in loops or 1 LI definition = invar
               if(not has_li_def and has_inside_def):
-                continue
+                invariant = False
+                break
           else:
+            # no arguments: const, jmp, call, ret
             pass
-          if("invariant" not in instr):
+          if(invariant and "invariant" not in instr):
             changed = True
             instr["invariant"] = True
+
     # move all invariant instrs
     for block in loops[header]:
       instrs = block_map[block]
       for instr in instrs[:]:
-        if("invariant" in instr): # if it has a def, def dominates uses, no other defs in loop, instr dominates all exits OR var is unused after loop, no side effects
-          # if("def" in instr and "def domiantes uses" and "no oher defs in loop" and ("instr dominates exits" or ("var unused after loop, no side effects"))):
+        if("invariant" in instr):
+          # instr has a def
+          if("dest" not in instr):
+            continue
+          # def dominates uses
+          for use_lbl in loops[header]:
+            use_block = block_map[use_lbl]
+            for use_instr in use_block:
+              if "args" in use_instr and instr["dest"] in use_instr["args"]:
+                if(block not in dominates[use_lbl]):
+                  continue
+          # no other defs in loop
+          for def_lbl in loops[header]:
+            def_block = block_map[def_lbl]
+            for def_instr in def_block:
+              if "dest" in def_instr and def_instr["dest"] == instr["dest"] and def_instr != instr:
+                continue
+          # instr dominates exits (backedges ...)
+          dominates_exits = True
+          for backedge in backedges:
+            if(block not in dominates[backedge]):
+              dominates_exits = False
+              break
+          # no uses after loop and no side effects
+          if(dominates_exits or (instr["op"] not in has_side_effects)):
             instrs.remove(instr)
             block_map[f"fake.{header}"].append(instr)
-  return new_blocks
+  return blocks
+
+def reachable_blocks(blocks):
+  cfg = build_cfg(blocks)
+  reachable = set(["entry"])
+  stack = ["entry"]
+  while stack:
+    node = stack.pop()
+    for succ in cfg.get(node, []):
+      if succ not in reachable:
+        reachable.add(succ)
+        stack.append(succ)
+  return [(label, block) for (label, block) in blocks if label in reachable]
 
 if __name__ == "__main__":
   program_str = "".join(sys.stdin.readlines())
@@ -106,8 +163,9 @@ if __name__ == "__main__":
     instrs = program["functions"][i]["instrs"]
     args = []
     if("args" in program["functions"][i]):
-      args = program["functions"][i]["args"]
+      args = program["functions"][i]["args"]    
     blocks = change_labels(function_blocks(instrs))
+    blocks = reachable_blocks(blocks)
     new_blocks = licm(args, blocks)
     program["functions"][i]["instrs"] = merge_blocks(new_blocks)
   print(json.dumps(program))

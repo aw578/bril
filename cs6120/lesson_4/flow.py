@@ -121,6 +121,63 @@ def worklist(blocks, init, merge, transfer, final_print):
     
     final_print(blocks, incoming, outgoing)
 
+def reaching_defs(args, blocks):
+    def init():
+        final = {}
+        for arg in args:
+            final[arg["name"]] = [("entry", {})]
+        return final
+    def merge(predecessors):
+        final = {}
+        for pred in predecessors:
+            for var in pred:
+                if var not in final:
+                    final[var] = []
+                for entry in pred[var]:
+                    if(entry not in final[var]):
+                        final[var].append(entry)
+        return final
+    def transfer(label, instrs, incoming):
+        # for each instr defined, final[var] = label
+        outgoing = incoming.copy()
+        for instr in instrs:
+            if("dest" in instr):
+                outgoing[instr["dest"]] = [(label, instr)]
+        return outgoing
+    # initialization
+    incoming = {"entry": init()}
+    outgoing = {"entry": init(), "exit": init()}
+    for (label, block) in blocks:
+        outgoing[label] = init()
+    successors = build_cfg(blocks)
+    predecessors = {"entry": []}
+    for block, succs in successors.items():
+        for succ in succs:
+            if succ not in predecessors:
+                predecessors[succ] = []
+            predecessors[succ].append(block)
+
+    label_blocks = {"entry": [], "exit": []}
+    worklist = set(["entry", "exit"])
+    for (label, instrs) in blocks:
+        worklist.add((label))
+        label_blocks[label] = instrs
+    
+    # work through worklist
+    while(len(worklist) > 0):
+        label = worklist.pop()
+        if(label not in predecessors):
+            # dead code
+            continue
+        incoming[label] = merge([outgoing[pred] for pred in predecessors[label]])
+        old_outgoing = outgoing[label]
+        outgoing[label] = transfer(label, label_blocks[label], incoming[label])
+        if(old_outgoing != outgoing[label]):
+            for successor in successors[label]:
+                worklist.add(successor)
+    
+    return incoming
+
 if __name__ == "__main__":
     program_str = "".join(sys.stdin.readlines())
     program = json.loads(program_str)
