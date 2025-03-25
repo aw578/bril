@@ -116,32 +116,56 @@ def licm(args, blocks):
       instrs = block_map[block]
       for instr in instrs[:]:
         if("invariant" in instr):
+          conditions_met = True
           # instr has a def
           if("dest" not in instr):
+            conditions_met = False
+          if(not conditions_met):
             continue
+
           # def dominates uses
           for use_lbl in loops[header]:
             use_block = block_map[use_lbl]
             for use_instr in use_block:
               if "args" in use_instr and instr["dest"] in use_instr["args"]:
                 if(block not in dominates[use_lbl]):
-                  continue
+                  conditions_met = False
+                  break
+          if(not conditions_met):
+            continue
+
           # no other defs in loop
           for def_lbl in loops[header]:
             def_block = block_map[def_lbl]
             for def_instr in def_block:
               if "dest" in def_instr and def_instr["dest"] == instr["dest"] and def_instr != instr:
-                continue
+                conditions_met = False
+                break
+          if(not conditions_met):
+            continue
+
           # instr dominates exits (backedges ...)
           dominates_exits = True
           for backedge in backedges:
             if(block not in dominates[backedge]):
               dominates_exits = False
               break
-          # no uses after loop and no side effects
-          if(dominates_exits or (instr["op"] not in has_side_effects)):
-            instrs.remove(instr)
-            block_map[f"fake.{header}"].append(instr)
+          # no uses after loop
+          used = False
+          # for every block not in the loop, if block has instr["dest"], if instr actually reaches block, check that nothing reads from dest?
+          # Thoughts: definition reaches + not in loop means it's after the loop, we don't care if it's in the loop because the loop doesn't run!
+          for (label, outside_block) in blocks:
+            if(label not in loops[header] and instr["dest"] in var_defs[label]):
+              if((label, instr) in var_defs[label][instr["dest"]]):
+                for outside_instr in outside_block:
+                  if("args" in outside_instr and instr["dest"] in outside_instr["args"]):
+                    used = True
+                    break
+          conditions_met = dominates_exits or (not used and instr["op"] not in has_side_effects)
+          if(not conditions_met):
+            continue
+          instrs.remove(instr)
+          block_map[f"fake.{header}"].append(instr)
   return blocks
 
 def reachable_blocks(blocks):
