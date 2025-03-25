@@ -1,5 +1,5 @@
 @main() {
-  input : int = const 2;
+  input : int = const 10;
   ten : int = const 10;
   one : int = const 1;
 .loop:
