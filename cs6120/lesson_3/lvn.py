@@ -123,8 +123,8 @@ def lvn(instrs):
       value = (instr["op"], tuple(argset))
     elif "value" in instr:
       value = (instr["op"], instr["value"])
-    elif instr["op"] == "ret":
-      # empty ret
+    elif instr["op"] in ("ret", "speculate", "commit"):
+      # empty
       continue
     else:
       raise Exception(instr)
@@ -148,6 +148,7 @@ def lvn(instrs):
         if overwrite:
           # rename to prevent clobbering 
           dest = fresh_name + str(fresh_num)
+          fresh_num += 1
           instr["dest"] = dest
 
         num = table.add(value, dest)

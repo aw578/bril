@@ -40,8 +40,8 @@ for f in benchmarks/core/*.bril; do
   done
   new_args=$(echo $new_args)
 
-  output_new_prog_dec=$(brili -p $new_args < new_prog 2>/dev/null)
-  output_prog_dec=$(brili -p $new_args < prog 2>/dev/null)
+  output_new_prog_dec=$(cat new_prog | python cs6120/lesson_3/lvn.py | python cs6120/lesson_3/dce.py | brili -p $new_args)
+  output_prog_dec=$(cat prog | python cs6120/lesson_3/lvn.py | python cs6120/lesson_3/dce.py | brili -p $new_args)
   if [ "$output_new_prog_dec" != "$output_prog_dec" ]; then
     echo "FAIL (decremented args) $f"
     echo "new_prog: $output_new_prog_dec"
