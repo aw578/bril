@@ -1,7 +1,7 @@
 import json
 import sys
 from ssa import to_ssa, from_ssa
-# from temp_ssa import to_ssa
+from temp_ssa import fake_to_ssa
 from collections import defaultdict
 
 COMMUTATIVE_OPS = {'add', 'mul', 'eq', 'and', 'or'}
@@ -27,6 +27,9 @@ def find_congruence_classes(func):
       if op == 'const':
         var_op[dest] = op + " " + str(instr["value"])
         congruence_classes[op + " " + str(instr["value"])].add(dest)
+      elif op == 'call':
+        var_op[dest] = op + " " + str(" ".join(instr["funcs"]))
+        congruence_classes[op + " " + str(" ".join(instr["funcs"]))].add(dest)
       elif op != "undef": # ignore 
         var_op[dest] = op
         congruence_classes[op].add(dest)
@@ -72,15 +75,15 @@ def find_congruence_classes(func):
 def main():
   program_str = "".join(sys.stdin.readlines())
   bril_program = json.loads(program_str)
+  values = ["original", "classes", "final"]
+  value = values[2]
 
   # Convert the program to SSA form
-  ssa_program = to_ssa(bril_program)
-  # print(json.dumps(ssa_program, indent=2, sort_keys=True))
-  # return
+  if(value == values[0]):
+    print(json.dumps(fake_to_ssa(bril_program), indent=2, sort_keys=True))
 
-  # For each function in the program
+  ssa_program = to_ssa(bril_program)
   for func in ssa_program['functions']:
-    # Find congruence classes
     congruence_classes = find_congruence_classes(func)
 
     # Build a mapping from variable to its class representative (first member)
@@ -93,17 +96,21 @@ def main():
     # Replace dest and args with class representative if exists
     for instr in func.get('instrs', []):
       if 'dest' in instr and instr['dest'] in var_to_rep:
+        if(value == values[1]):
+          print(instr)
+          print(var_to_rep[instr['dest']])
         instr['dest'] = var_to_rep[instr['dest']]
       if 'args' in instr:
         instr['args'] = [var_to_rep.get(arg, arg) for arg in instr['args']]
 
-    # Print congruence classes
-    # print(f"Congruence classes for function {func['name']}:")
-    # for class_id, instrs in congruence_classes.items():
-    #   print(f"Class {class_id}: {sorted(instrs)}")
-    from_ssa(ssa_program)
+    if(value == values[1]):
+      print(f"Congruence classes for function {func['name']}:")
+      for class_id, instrs in congruence_classes.items():
+        print(f"Class {class_id}: {sorted(instrs)}")
 
-  print(json.dumps(ssa_program, indent=2, sort_keys=True))
+  if(value == values[2]):
+    from_ssa(ssa_program)
+    print(json.dumps(ssa_program, indent=2, sort_keys=True))
 
 # TODO: available expressions: set every congruence class to its first member -> available instructions for blocks
 # -> instruction available? remove

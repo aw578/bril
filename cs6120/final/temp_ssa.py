@@ -161,11 +161,7 @@ def func_to_ssa(func):
     func["instrs"] = reassemble(blocks)
 
 
-def to_ssa(bril):
+def fake_to_ssa(bril):
     for func in bril["functions"]:
         func_to_ssa(func)
     return bril
-
-
-if __name__ == "__main__":
-    print(json.dumps(to_ssa(json.load(sys.stdin)), indent=2, sort_keys=True))
