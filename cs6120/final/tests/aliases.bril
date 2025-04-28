@@ -1,0 +1,8 @@
+# constants dont propagate ...
+@main {
+  a: int = const 7;
+  b: int = id a;
+  c: int = id b;
+  d: int = id a;
+  e: int = id b;
+}

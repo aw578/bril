@@ -1,0 +1,22 @@
+@main {
+  a: int = const 0;
+  one: int = const 1;
+  two: int = const 2;
+  ten: int = const 10;
+  x: int = id a;
+  y: int = id a;
+
+.loop:
+  p: int = add x one;
+  q: int = add y two;
+  c: bool = lt p ten;
+  br c .then .end;
+
+.then:
+  x: int = id p;
+  y: int = id q;
+  jmp .loop;
+
+.end:
+  ret;
+}

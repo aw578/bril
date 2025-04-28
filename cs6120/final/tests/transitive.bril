@@ -1,0 +1,12 @@
+@main {
+  x: int = const 0;
+  y: int = const 1;
+  z: int = const 2;
+  w: int = const 3;
+  a: int = add x y;
+  b: int = add x y;
+  d: int = add a z;
+  e: int = add b z;
+  f: int = add d w;
+  g: int = add e w;
+}

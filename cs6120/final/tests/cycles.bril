@@ -1,0 +1,21 @@
+@main {
+  a: int = const 0;
+  one: int = const 1;
+  ten: int = const 10;
+  x: int = id a;
+  y: int = const 0;
+  not_y: int = add x one;
+  not_c: bool = lt y ten;
+
+.loop:
+  y: int = add x one;
+  c: bool = lt y ten;
+  br c .then .end;
+
+.then:
+  x: int = id y;
+  jmp .loop;
+
+.end:
+  ret;
+}

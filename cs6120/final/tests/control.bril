@@ -1,0 +1,15 @@
+@main {
+  .entry:
+    a0: int = const 1;
+    b0: int = const 3;
+    cond: bool = const true;
+    br cond .block1 .block2;
+  .block1:
+    x1: int = add a0 b0;
+    jmp .merge;
+  .block2:
+    x2: int = add a0 b0;
+    jmp .merge;
+  .merge:
+    y0: int = add a0 b0;
+}

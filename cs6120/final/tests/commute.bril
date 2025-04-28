@@ -1,0 +1,6 @@
+@main {
+  x1: int = const 1;
+  x2: int = const 2;
+  t1: int = add x1 x2;
+  t2: int = add x2 x1;
+}

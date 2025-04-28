@@ -1,0 +1,7 @@
+@main {
+  x1: int = const 1;
+  x2: int = const 2;
+  t1: int = add x1 x2;
+  t3: int = add x1 t1;
+  t4: int = add t1 x2;
+}

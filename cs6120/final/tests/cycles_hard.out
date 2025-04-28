@@ -1,0 +1,13 @@
+Congruence classes for function main:
+Class undef: ['p.init', 'c.init', 'q.init']
+Class const 0: ['a.0']
+Class const 1: ['one.0']
+Class const 2: ['two.0']
+Class const 10: ['ten.0']
+Class id: ['y.0', 'x.0']
+Class get: ['x.1', 'q.0', 'p.0', 'c.0', 'y.1']
+Class add: ['p.1']
+Class lt: ['c.1']
+Class id_new: ['x.2']
+Class add_new: ['q.1']
+Class id_new_new: ['y.2']
