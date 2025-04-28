@@ -24,15 +24,19 @@ def find_congruence_classes(func):
     if 'dest' in instr and 'op' in instr:
       dest = instr['dest']
       op = instr['op']
+      class_id = None
       if op == 'const':
-        var_op[dest] = op + " " + str(instr["value"])
-        congruence_classes[op + " " + str(instr["value"])].add(dest)
+        class_id = op + " " + str(instr["value"])
       elif op == 'call':
-        var_op[dest] = op + " " + str(" ".join(instr["funcs"]))
-        congruence_classes[op + " " + str(" ".join(instr["funcs"]))].add(dest)
+        class_id = op + " " + str(" ".join(instr["funcs"]))
+      elif op == 'phi':
+        block_label = instr.get('labels', [None])[0] if 'labels' in instr and instr['labels'] else func.get('name', '')
+        class_id = f"{op}_{block_label}"
       elif op != "undef": # ignore 
-        var_op[dest] = op
-        congruence_classes[op].add(dest)
+        class_id = op
+      if(class_id):
+        var_op[dest] = class_id
+        congruence_classes[op].add(class_id)
 
   # Find max arg length
   max_arg_len = 0
@@ -83,6 +87,7 @@ def main():
     print(json.dumps(fake_to_ssa(bril_program), indent=2, sort_keys=True))
 
   ssa_program = to_ssa(bril_program)
+  # TODO: find probleem in gebmm main
   for func in ssa_program['functions']:
     congruence_classes = find_congruence_classes(func)
 
@@ -96,9 +101,6 @@ def main():
     # Replace dest and args with class representative if exists
     for instr in func.get('instrs', []):
       if 'dest' in instr and instr['dest'] in var_to_rep:
-        if(value == values[1]):
-          print(instr)
-          print(var_to_rep[instr['dest']])
         instr['dest'] = var_to_rep[instr['dest']]
       if 'args' in instr:
         instr['args'] = [var_to_rep.get(arg, arg) for arg in instr['args']]

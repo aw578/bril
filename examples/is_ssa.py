@@ -9,11 +9,15 @@ def is_ssa(bril):
     """
     for func in bril['functions']:
         assigned = set()
+        print(func["name"])
         for instr in func['instrs']:
             if 'dest' in instr:
                 if instr['dest'] in assigned:
+                    print(instr)
                     return False
                 else:
+                    if(instr["dest"] == "i.0"):
+                        print(instr)
                     assigned.add(instr['dest'])
     return True
 
