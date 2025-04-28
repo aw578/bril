@@ -1,8 +1,7 @@
 import json
 import sys
-import os
-sys.path.append(os.path.expanduser("~/bril/examples"))
-from to_ssa import to_ssa
+from ssa import to_ssa, from_ssa
+# from temp_ssa import to_ssa
 from collections import defaultdict
 
 COMMUTATIVE_OPS = {'add', 'mul', 'eq', 'and', 'or'}
@@ -12,6 +11,14 @@ def find_congruence_classes(func):
   congruence_classes = defaultdict(set)
   var_op = {}
 
+  # Add function arguments as their own congruence classes of 1
+  for arg in func.get('args', []):
+    if isinstance(arg, dict) and 'name' in arg:
+      arg_name = arg['name']
+    else:
+      arg_name = arg
+    congruence_classes[f"arg_{arg_name}"].add(arg_name)
+
   # Get starting classes for normal ops
   for instr in instrs:
     if 'dest' in instr and 'op' in instr:
@@ -20,7 +27,7 @@ def find_congruence_classes(func):
       if op == 'const':
         var_op[dest] = op + " " + str(instr["value"])
         congruence_classes[op + " " + str(instr["value"])].add(dest)
-      else:
+      elif op != "undef": # ignore 
         var_op[dest] = op
         congruence_classes[op].add(dest)
 
@@ -34,7 +41,7 @@ def find_congruence_classes(func):
 
   # Build initial worklist (list of sets)
   worklist = [s for s in congruence_classes.values() if s]
-
+  id_counter = defaultdict(int)
   while worklist:
     c = worklist.pop()
     for p in range(max_arg_len):
@@ -47,7 +54,8 @@ def find_congruence_classes(func):
         n = s.intersection(touched)
         if 0 < len(n) < len(s):
           congruence_classes[o] = s.difference(n)
-          new_class_id = f"{o}_new"
+          new_class_id = f"{o}_{id_counter[o]}"
+          id_counter[o] += 1
           congruence_classes[new_class_id] = n
           # Update worklist
           if s in worklist:
@@ -62,27 +70,41 @@ def find_congruence_classes(func):
   return {k: list(v) for k, v in congruence_classes.items() if v}
 
 def main():
-    program_str = "".join(sys.stdin.readlines())
-    bril_program = json.loads(program_str)
+  program_str = "".join(sys.stdin.readlines())
+  bril_program = json.loads(program_str)
 
-    # Convert the program to SSA form
-    ssa_program = to_ssa(bril_program)
-    # print(json.dumps(ssa_program, indent=2, sort_keys=True))
-    # return
+  # Convert the program to SSA form
+  ssa_program = to_ssa(bril_program)
+  # print(json.dumps(ssa_program, indent=2, sort_keys=True))
+  # return
 
-    # For each function in the program
-    for func in ssa_program['functions']:
-        # Find congruence classes
-        congruence_classes = find_congruence_classes(func)
-        
-        # Print congruence classes
-        print(f"Congruence classes for function {func['name']}:")
-        for class_id, instrs in congruence_classes.items():
-            print(f"Class {class_id}: {instrs}")
+  # For each function in the program
+  for func in ssa_program['functions']:
+    # Find congruence classes
+    congruence_classes = find_congruence_classes(func)
 
-    # print(json.dumps(ssa_program, indent=2, sort_keys=True))
+    # Build a mapping from variable to its class representative (first member)
+    var_to_rep = {}
+    for class_vars in congruence_classes.values():
+      rep = sorted(class_vars)[0]
+      for v in class_vars:
+        var_to_rep[v] = rep
 
-# TODO: not merging phis (need to restructure to_ssa)
+    # Replace dest and args with class representative if exists
+    for instr in func.get('instrs', []):
+      if 'dest' in instr and instr['dest'] in var_to_rep:
+        instr['dest'] = var_to_rep[instr['dest']]
+      if 'args' in instr:
+        instr['args'] = [var_to_rep.get(arg, arg) for arg in instr['args']]
+
+    # Print congruence classes
+    # print(f"Congruence classes for function {func['name']}:")
+    # for class_id, instrs in congruence_classes.items():
+    #   print(f"Class {class_id}: {sorted(instrs)}")
+    from_ssa(ssa_program)
+
+  print(json.dumps(ssa_program, indent=2, sort_keys=True))
+
 # TODO: available expressions: set every congruence class to its first member -> available instructions for blocks
 # -> instruction available? remove
 if __name__ == "__main__":

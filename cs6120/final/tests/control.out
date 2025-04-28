@@ -1,7 +1,7 @@
 Congruence classes for function main:
-Class undef: ['x1.init', 'x2.init']
 Class const 1: ['a0.0']
 Class const 3: ['b0.0']
 Class const True: ['cond.0']
-Class add: ['x1.0', 'y0.0', 'x2.0']
-Class get: ['x1.1', 'x2.1']
+Class add: ['x1.0', 'x2.0', 'y0.0']
+Class phi: ['x2.1']
+Class phi_0: ['x1.1']
